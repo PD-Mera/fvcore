@@ -127,7 +127,7 @@ class Checkpointer:
         self.tag_last_checkpoint(basename)
 
     def load(
-        self, path: str, checkpointables: Optional[List[str]] = None
+        self, path: str, checkpointables: Optional[List[str]] = None, use_timm_weights = False
     ) -> Dict[str, Any]:
         """
         Load from the given checkpoint.
@@ -150,7 +150,7 @@ class Checkpointer:
         self.logger.info("[Checkpointer] Loading from {} ...".format(path))
         # path may not be a local file, but _load_file is responsible to handle it.
         checkpoint = self._load_file(path)
-        incompatible = self._load_model(checkpoint)
+        incompatible = self._load_model(checkpoint, use_timm_weights = use_timm_weights)
         if (
             incompatible is not None
         ):  # handle some existing subclasses that returns None
@@ -204,7 +204,7 @@ class Checkpointer:
         ]
         return all_model_checkpoints
 
-    def resume_or_load(self, path: str, *, resume: bool = True) -> Dict[str, Any]:
+    def resume_or_load(self, path: str, *, resume: bool = True, use_timm_weights = False) -> Dict[str, Any]:
         """
         If `resume` is True, this method attempts to resume from the last
         checkpoint, if exists. Otherwise, load checkpoint from the given path.
@@ -221,9 +221,15 @@ class Checkpointer:
         """
         if resume and self.has_checkpoint():
             path = self.get_checkpoint_file()
-            return self.load(path)
+            if use_timm_weights:
+                return self.load(path, use_timm_weights=use_timm_weights)
+            else:
+                return self.load(path)
         else:
-            return self.load(path, checkpointables=[])
+            if use_timm_weights:
+                return self.load(path, use_timm_weights=use_timm_weights, checkpointables=[])
+            else:
+                return self.load(path, checkpointables=[])
 
     def tag_last_checkpoint(self, last_filename_basename: str) -> None:
         """
@@ -251,7 +257,7 @@ class Checkpointer:
         with self.path_manager.open(f, "rb") as file:
             return torch.load(cast(IO[bytes], file), map_location=torch.device("cpu"))
 
-    def _load_model(self, checkpoint: Any) -> _IncompatibleKeys:
+    def _load_model(self, checkpoint: Any, use_timm_weights = False) -> _IncompatibleKeys:
         """
         Load weights from a checkpoint.
 
@@ -270,6 +276,7 @@ class Checkpointer:
             for ``incorrect_shapes``.
         """
         checkpoint_state_dict = checkpoint.pop("model")
+        checkpoint_state_dict = {"backbone.net." + key: checkpoint_state_dict[key] for key in checkpoint_state_dict.keys()}
         self._convert_ndarray_to_tensor(checkpoint_state_dict)
 
         # if the state_dict comes from a model that was wrapped in a
