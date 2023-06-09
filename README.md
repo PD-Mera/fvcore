@@ -1,4 +1,8 @@
-# fvcore
+# fvcore - Modified
+
+- Add some modified in [fvcore/common/checkpoint.py](./fvcore/common/checkpoint.py) to compatible with [modified-detectron2](https://github.com/PD-Mera/detectron2)
+
+# (ORIGINAL README) fvcore
 
 [![Support Ukraine](https://img.shields.io/badge/Support-Ukraine-FFD500?style=flat&labelColor=005BBB)](https://opensource.fb.com/support-ukraine)
 
